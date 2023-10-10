@@ -1,142 +1,118 @@
 import pygame
 import time
-import random
 
-light_speed = 15
-window_w = 720
-window_h = 480
+class Light:
+    def __init__(self, position, color, direction, controls):
+        self.position = position.copy()
+        self.body = [position.copy()]
+        self.color = color
+        self.change_to = self.direction = direction
+        self.controls = controls
 
-black = pygame.Color(0, 0, 0)
-red = pygame.Color(255, 0, 0)
-green = pygame.Color(0, 255, 0)
-blue = pygame.Color(0, 0, 255)
+    def move(self):
+        if self.change_to in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+            self.direction = self.change_to
+        moves = {
+            'UP': (0, -10),
+            'DOWN': (0, 10),
+            'LEFT': (-10, 0),
+            'RIGHT': (10, 0)
+        }
+        move = moves[self.direction]
+        self.position[0] += move[0]
+        self.position[1] += move[1]
+        self.body.insert(0, self.position.copy())
 
-pygame.init()
-pygame.display.set_caption('Light Racer')
-game_window = pygame.display.set_mode((window_w, window_h))
-fps = pygame.time.Clock()
+    def handle_input(self, key):
+        if key in self.controls:
+            self.change_to = self.controls[key]
 
-# Light 1
-light_position = [100, 50]
-light_body = [[100, 50]]
+class LightRacerGame:
+    def __init__(self):
+        pygame.init()
+        pygame.display.set_caption('Light Racer')
 
-# Light 2
-light_position_2 = [620, 460]
-light_body_2 = [[620, 460]]
+        self.light_speed = 15
+        self.window_w = 720
+        self.window_h = 480
+        self.game_window = pygame.display.set_mode((self.window_w, self.window_h))
+        self.fps = pygame.time.Clock()
+        self.colors = {
+            'black': pygame.Color(0, 0, 0),
+            'red': pygame.Color(255, 0, 0),
+            'green': pygame.Color(0, 255, 0),
+            'blue': pygame.Color(0, 0, 255)
+        }
 
-change_to = direction = 'RIGHT'
-change_to_2 = direction_2 = 'LEFT'
+        controls_1 = {
+            pygame.K_UP: 'UP',
+            pygame.K_DOWN: 'DOWN',
+            pygame.K_LEFT: 'LEFT',
+            pygame.K_RIGHT: 'RIGHT'
+        }
+        self.light1 = Light([100, 50], self.colors['green'], 'RIGHT', controls_1)
 
-def game_over():
-    my_font = pygame.font.SysFont('arial', 50)
-    game_over_surface = my_font.render('Game Over Mate :(', True, red)
-    game_over_rect = game_over_surface.get_rect()
-    game_over_rect.midtop = (window_w/2, window_h/2)
-    game_window.blit(game_over_surface, game_over_rect)
-    pygame.display.flip()
-    time.sleep(2)
-    pygame.quit()
-    quit()
+        controls_2 = {
+            pygame.K_z: 'UP',
+            pygame.K_s: 'DOWN',
+            pygame.K_q: 'LEFT',
+            pygame.K_d: 'RIGHT'
+        }
+        self.light2 = Light([620, 460], self.colors['blue'], 'LEFT', controls_2)
 
-while True: 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            quit()
+    def game_over(self):
+        my_font = pygame.font.SysFont('arial', 50)
+        game_over_surface = my_font.render('Game Over Mate :(', True, self.colors['red'])
+        game_over_rect = game_over_surface.get_rect()
+        game_over_rect.midtop = (self.window_w / 2, self.window_h / 2)
+        self.game_window.blit(game_over_surface, game_over_rect)
+        pygame.display.flip()
+        time.sleep(2)
+        pygame.quit()
+        quit()
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                change_to = 'UP'
-            if event.key == pygame.K_DOWN:
-                change_to = 'DOWN'
-            if event.key == pygame.K_LEFT:
-                change_to = 'LEFT'
-            if event.key == pygame.K_RIGHT:
-                change_to = 'RIGHT'
-            if event.key == pygame.K_z:
-                change_to_2 = 'UP'
-            if event.key == pygame.K_s:
-                change_to_2 = 'DOWN'
-            if event.key == pygame.K_q:
-                change_to_2 = 'LEFT'
-            if event.key == pygame.K_d:
-                change_to_2 = 'RIGHT'
+    def check_collisions(self, light):
+        if light.position[0] < 0 or light.position[0] > self.window_w-10:
+            return True
+        if light.position[1] < 0 or light.position[1] > self.window_h-10:
+            return True
+        for segment in light.body[1:]:
+            if segment == light.position:
+                return True
+        return False
 
-    if change_to == 'UP' and direction != 'DOWN':
-        direction = 'UP'
-    if change_to == 'DOWN' and direction != 'UP':
-        direction = 'DOWN'
-    if change_to == 'LEFT' and direction != 'RIGHT':
-        direction = 'LEFT'    
-    if change_to == 'RIGHT' and direction != 'LEFT':
-        direction  = 'RIGHT'        
+    def check_light_collisions(self, light1, light2):
+        if light1.position in light2.body:
+            return True
+        return False
 
-    if direction == 'UP':
-        light_position[1] -= 10
-    if direction == 'DOWN':
-        light_position[1] += 10
-    if direction == 'LEFT':
-        light_position[0] -= 10
-    if direction == 'RIGHT':
-        light_position[0] += 10
+    def draw_lights(self):
+        for pos in self.light1.body:
+            pygame.draw.rect(self.game_window, self.light1.color, pygame.Rect(pos[0], pos[1], 10, 10))
+        for pos in self.light2.body:
+            pygame.draw.rect(self.game_window, self.light2.color, pygame.Rect(pos[0], pos[1], 10, 10))
 
-    if change_to_2 == 'UP' and direction_2 != 'DOWN':
-        direction_2 = 'UP'
-    if change_to_2 == 'DOWN' and direction_2 != 'UP':
-        direction_2 = 'DOWN'
-    if change_to_2 == 'LEFT' and direction_2 != 'RIGHT':
-        direction_2 = 'LEFT'    
-    if change_to_2 == 'RIGHT' and direction_2 != 'LEFT':
-        direction_2  = 'RIGHT'
-    
-    if direction_2 == 'UP':
-        light_position_2[1] -= 10
-    if direction_2 == 'DOWN':
-        light_position_2[1] += 10
-    if direction_2 == 'LEFT':
-        light_position_2[0] -= 10
-    if direction_2 == 'RIGHT':
-        light_position_2[0] += 10
+    def run(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.KEYDOWN:
+                    self.light1.handle_input(event.key)
+                    self.light2.handle_input(event.key)
 
-    new_segment = list(light_position)
-    light_body.insert(0, new_segment)    
+            self.light1.move()
+            self.light2.move()
 
-    new_segment_2 = list(light_position_2)
-    light_body_2.insert(0, new_segment_2)
-    print(new_segment)
-    print(new_segment_2)
+            if self.check_collisions(self.light1) or self.check_collisions(self.light2) or self.check_light_collisions(self.light1, self.light2) or self.check_light_collisions(self.light2, self.light1):
+                self.game_over()
 
-    game_window.fill(black)
+            self.game_window.fill(self.colors['black'])
+            self.draw_lights()
+            pygame.display.flip()
+            self.fps.tick(self.light_speed)
 
-    if (light_position[0] < 0 or light_position[0] > window_w-10 or 
-        light_position[1] < 0 or light_position[1] > window_h-10 or
-        light_position_2[0] < 0 or light_position_2[0] > window_w-10 or 
-        light_position_2[1] < 0 or light_position_2[1] > window_h-10):
-        game_over()
-
-    for block in light_body[1:]:
-        if pygame.Rect(light_position[0], light_position[1], 10, 10).colliderect(pygame.Rect(block[0], block[1], 10, 10)):
-            game_over()
-
-    for block in light_body_2[1:]:
-        if pygame.Rect(light_position_2[0], light_position_2[1], 10, 10).colliderect(pygame.Rect(block[0], block[1], 10, 10)):
-            game_over()
-
-    for block in light_body:
-        if pygame.Rect(light_position_2[0], light_position_2[1], 10, 10).colliderect(pygame.Rect(block[0], block[1], 10, 10)):
-            game_over()
-
-    for block in light_body_2:
-        if pygame.Rect(light_position[0], light_position[1], 10, 10).colliderect(pygame.Rect(block[0], block[1], 10, 10)):
-            game_over()
-
-
-    for pos in light_body:
-        pygame.draw.rect(game_window, green, pygame.Rect(pos[0], pos[1], 10, 10))
-
-    for pos in light_body_2:
-        pygame.draw.rect(game_window, blue, pygame.Rect(pos[0], pos[1], 10, 10))
-
-    pygame.display.update()
-
-    fps.tick(light_speed)
+if __name__ == "__main__":
+    game = LightRacerGame()
+    game.run()
